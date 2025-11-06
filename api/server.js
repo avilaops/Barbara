@@ -44,7 +44,8 @@ if (process.env.NODE_ENV !== 'test') {
         })
         .catch((err) => {
             console.error('Falha ao conectar MongoDB:', err); // eslint-disable-line no-console
-            process.exit(1);
+            console.warn('⚠️  Iniciando servidor SEM MongoDB (modo desenvolvimento)'); // eslint-disable-line no-console
+            app.listen(port, () => console.log(`API Bárbara ouvindo na porta ${port} (sem MongoDB)`)); // eslint-disable-line no-console
         });
 }
 

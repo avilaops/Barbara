@@ -118,6 +118,36 @@ Barbara/
 
 ## 🚀 Execução do Backend (API)
 
+### Opção 1: Docker + Ngrok (Recomendado) 🐳
+
+A forma mais rápida de rodar o projeto com exposição pública:
+
+```powershell
+# Iniciar containers (API + Ngrok)
+.\docker.ps1 up
+
+# Obter URL pública
+.\docker.ps1 ngrok-url
+
+# Ver logs
+.\docker.ps1 logs
+
+# Parar
+.\docker.ps1 down
+```
+
+Ou use o menu interativo: `.\docker.bat`
+
+**Acessos:**
+
+- API Local: <http://localhost:3000>
+- Ngrok Dashboard: <http://localhost:4040>
+- API Pública: Execute `.\docker.ps1 ngrok-url`
+
+📖 Veja [DOCKER-QUICKSTART.md](./DOCKER-QUICKSTART.md) para mais detalhes.
+
+### Opção 2: Execução Local (Desenvolvimento)
+
 Pré-requisitos:
 
 - Node.js 20+

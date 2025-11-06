@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # API Backend
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: barbara-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGODB_URI=${MONGODB_URI}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - HF_TOKEN=${HF_TOKEN}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_MODEL=${AZURE_OPENAI_MODEL}
+    volumes:
+      - ./api/logs:/app/logs
+    networks:
+      - barbara-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Ngrok para expor API publicamente
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: barbara-ngrok
+    restart: unless-stopped
+    command:
+      - "start"
+      - "--all"
+      - "--config"
+      - "/etc/ngrok.yml"
+    volumes:
+      - ./ngrok.yml:/etc/ngrok.yml
+    ports:
+      - "4040:4040"  # Web interface do ngrok
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_TOKEN}
+    networks:
+      - barbara-network
+    depends_on:
+      - api
+
+networks:
+  barbara-network:
+    driver: bridge
+
+volumes:
+  api-logs:
+    driver: local

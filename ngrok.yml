@@ -1,0 +1,15 @@
+version: "2"
+authtoken: 357OcJ7oZD0s9csNk9Bba60yVSQ_7csbxu3GKj7b6wJ3bPkRr
+
+tunnels:
+  barbara-api:
+    proto: http
+    addr: api:3000
+    inspect: true
+    # Configurações adicionais
+    metadata: "Barbara Virtual Try-On API"
+    
+web_addr: 0.0.0.0:4040
+
+log_level: info
+log_format: json
