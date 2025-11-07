@@ -13,11 +13,14 @@ namespace Barbara.Core
 
         private GameObject currentAvatar;
         private string currentAvatarId;
+        private Coroutine statusPollingRoutine;
 
         private void Start()
         {
             LoadDefaultAvatar();
         }
+
+        public Transform AvatarRoot => avatarRoot;
 
         /// <summary>
         /// Carrega avatar padrão (placeholder).
@@ -54,7 +57,11 @@ namespace Barbara.Core
                 {
                     Debug.Log($"Avatar solicitado: {requestId}");
                     currentAvatarId = requestId;
-                    StartCoroutine(PollAvatarStatus(requestId));
+                    if (statusPollingRoutine != null)
+                    {
+                        StopCoroutine(statusPollingRoutine);
+                    }
+                    statusPollingRoutine = StartCoroutine(PollAvatarStatus(requestId));
                 },
                 onError: (error) =>
                 {
@@ -80,7 +87,8 @@ namespace Barbara.Core
                         if (response.status == "ready" && !string.IsNullOrEmpty(response.glbUrl))
                         {
                             LoadCustomAvatar(response.glbUrl);
-                            StopCoroutine(PollAvatarStatus(avatarId));
+                            statusPollingRoutine = null;
+                            break;
                         }
                     },
                     onError: (error) =>
@@ -97,22 +105,38 @@ namespace Barbara.Core
         private void LoadCustomAvatar(string glbUrl)
         {
             Debug.Log($"Carregando avatar de: {glbUrl}");
-            // TODO: Implementar carregamento GLB via Addressables ou GLTFUtility
-            // Exemplo: Importer.LoadFromUri(glbUrl, new ImportSettings(), OnLoadComplete);
+            GlbLoader.Instance.Load(
+                glbUrl,
+                onSuccess: OnLoadComplete,
+                onError: (error) => Debug.LogError($"Falha ao carregar avatar customizado: {error}")
+            );
         }
 
         /// <summary>
         /// Callback quando avatar customizado for carregado.
         /// </summary>
-        private void OnLoadComplete(GameObject loadedAvatar, AnimationClip[] animations)
+        private void OnLoadComplete(GameObject loadedAvatar)
         {
+            if (loadedAvatar == null)
+            {
+                Debug.LogWarning("Avatar customizado nulo recebido do loader.");
+                return;
+            }
+
             if (currentAvatar != null)
             {
                 Destroy(currentAvatar);
             }
 
-            currentAvatar = Instantiate(loadedAvatar, avatarRoot);
+            loadedAvatar.transform.SetParent(avatarRoot, false);
+            loadedAvatar.transform.localPosition = Vector3.zero;
+            loadedAvatar.transform.localRotation = Quaternion.identity;
+            loadedAvatar.transform.localScale = Vector3.one;
+
+            currentAvatar = loadedAvatar;
             Debug.Log("Avatar customizado carregado com sucesso!");
         }
+
+        statusPollingRoutine = null;
     }
 }

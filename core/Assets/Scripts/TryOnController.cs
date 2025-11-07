@@ -11,6 +11,7 @@ namespace Barbara.Core
         [SerializeField] private SkinnedMeshRenderer avatarBodyRenderer;
 
         private ProductData currentProduct;
+        private GameObject currentClothingInstance;
 
         public void ApplyClothing(ProductData product)
         {
@@ -35,8 +36,14 @@ namespace Barbara.Core
         private void LoadClothingModel(string model3dUrl)
         {
             Debug.Log($"Carregando modelo 3D de roupa: {model3dUrl}");
-            // TODO: Implementar carregamento de .glb com GLTFUtility
-            // Exemplo: Importer.LoadFromUri(model3dUrl, settings, OnClothingLoaded);
+            GlbLoader.Instance.Load(
+                model3dUrl,
+                onSuccess: OnClothingLoaded,
+                onError: (error) =>
+                {
+                    Debug.LogError($"Falha ao carregar modelo 3D: {error}");
+                    ApplySimpleTexture(currentProduct);
+                });
         }
 
         /// <summary>
@@ -60,13 +67,24 @@ namespace Barbara.Core
         /// </summary>
         private void OnClothingLoaded(GameObject clothingObject)
         {
-            // Anexar ao avatar
-            if (clothingObject != null && avatarManager != null)
+            if (clothingObject == null || avatarManager == null)
             {
-                clothingObject.transform.SetParent(avatarManager.transform);
-                clothingObject.transform.localPosition = Vector3.zero;
-                Debug.Log("Roupa aplicada ao avatar!");
+                Debug.LogWarning("Modelo de roupa inválido ou AvatarManager ausente.");
+                return;
             }
+
+            if (currentClothingInstance != null)
+            {
+                Destroy(currentClothingInstance);
+            }
+
+            clothingObject.transform.SetParent(avatarManager.AvatarRoot, false);
+            clothingObject.transform.localPosition = Vector3.zero;
+            clothingObject.transform.localRotation = Quaternion.identity;
+            clothingObject.transform.localScale = Vector3.one;
+
+            currentClothingInstance = clothingObject;
+            Debug.Log("Roupa aplicada ao avatar!");
         }
 
         public ProductData GetCurrentProduct()

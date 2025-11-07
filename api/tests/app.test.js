@@ -9,4 +9,4 @@ describe('Healthcheck', () => {
     });
 });
 
-// Como o Mongo não está configurado nos testes ainda, testamos somente rotas simples.
+// Testes específicos para catálogo e avatar estão em catalog.test.js e avatar.test.js.

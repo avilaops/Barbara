@@ -23,6 +23,10 @@ router.post('/', async (req, res, next) => {
     try {
         const { error, value } = productSchema.validate(req.body, { abortEarly: false });
         if (error) return res.status(400).json({ errors: error.details });
+        const existing = await Product.findOne({ sku: value.sku });
+        if (existing) {
+            return res.status(409).json({ error: 'SKU já existente' });
+        }
         const product = await Product.create(value);
         res.status(201).json(product);
     } catch (err) {

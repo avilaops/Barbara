@@ -93,9 +93,19 @@ Ou acesse manualmente: <http://localhost:4040/status>
 ### Variáveis de Ambiente (.env)
 
 ```properties
-NGROK_TOKEN=seu_token_aqui
+ALLOWED_ORIGINS=http://localhost:8080,http://localhost:3000
 MONGODB_URI=sua_conexao_mongodb
+AVATAR_PROVIDER=mock
+READY_PLAYER_ME_APP_ID=
+READY_PLAYER_ME_API_KEY=
+READY_PLAYER_ME_BASE_URL=https://api.readyplayer.me/v2/avatars
+TRYON_DIFFUSION_ENDPOINT=
+TRYON_DIFFUSION_TOKEN=
+ASSETS_BASE_URL=https://storage.example.com/avatars
+NGROK_TOKEN=seu_token_aqui
 OPENAI_API_KEY=sua_chave_openai
+SENTRY_DSN=
+SENTRY_ENVIRONMENT=production
 # ... outras variáveis
 ```
 

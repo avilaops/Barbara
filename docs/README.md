@@ -5,11 +5,39 @@ Seu propósito é permitir que qualquer pessoa visualize roupas reais em um **av
 
 ---
 
+## 📚 Documentação do Frontend Premium
+
+### 🎯 Guias Completos Disponíveis:
+
+1. **[FRONTEND-PREMIUM.md](./FRONTEND-PREMIUM.md)** - Visão geral completa do sistema UI
+   - 7 componentes principais criados
+   - Design system (cores, tipografia, espaçamentos)
+   - Arquitetura e integrações
+   - Performance e otimizações
+   - Próximos passos e roadmap
+
+2. **[FRONTEND-SETUP-GUIDE.md](./FRONTEND-SETUP-GUIDE.md)** - Implementação passo-a-passo
+   - Checklist completo em 5 fases (2-3 horas)
+   - Como criar todos os prefabs Unity
+   - Configuração completa da Scene
+   - Integração com backend
+   - Testing e troubleshooting
+
+3. **[FRONTEND-CODE-EXAMPLES.md](./FRONTEND-CODE-EXAMPLES.md)** - Exemplos práticos
+   - Como usar cada componente
+   - Fluxos completos (busca, compra, avatar)
+   - Customizações visuais
+   - Responsividade
+
+**👉 Comece pelo FRONTEND-PREMIUM.md para entender a arquitetura!**
+
+---
+
 ## 🧩 Identidade do Projeto
 
 **Nome:** Bárbara  
 **Função:** Plataforma virtual de moda e experimentação 3D  
-**Slogan:** “Vista-se com inteligência.”  
+**Slogan:** "Vista-se com inteligência."  
 **Missão:** Conectar tecnologia, moda e personalização em uma só experiência.
 
 ---

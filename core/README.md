@@ -87,7 +87,13 @@ Definidas em `Packages/manifest.json`:
 
 **Opcional (para carregamento GLB):**
 
-- GLTFUtility ou Siccity.GLTFUtility via Package Manager
+- Siccity.GLTFUtility via Package Manager (defina a Scripting Define `GLTF_UTILITY` para habilitar)
+
+### Importador GLB em runtime
+
+- O script `GlbLoader` baixa os arquivos `.glb` e tenta importá-los com o `Siccity.GLTFUtility`.
+- Sem o pacote instalado, o loader gera um aviso e a aplicação volta para o fallback de textura/cor.
+- Ajuste `ASSETS_BASE_URL` no backend para apontar para o storage onde os modelos 3D ficam publicados.
 
 ## 🎨 Namespace
 
@@ -127,7 +133,7 @@ Verifique:
 
 ## 📚 Próximos Passos
 
-- [ ] Implementar carregamento real de GLB (GLTFUtility)
+- [x] Carregamento de GLB com GLTFUtility (via `GlbLoader`)
 - [ ] Adicionar animações de transição
 - [ ] Implementar sistema de cache de produtos
 - [ ] Adicionar feedback visual de loading

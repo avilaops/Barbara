@@ -11,9 +11,9 @@ Objetivo: Evoluir o backend Node.js + Express + MongoDB da plataforma Bárbara.
 ## Próximas Features
 
 - Autenticação JWT para usuários.
-- Rate limiting (ex: express-rate-limit) para rotas de avatar.
-- Integração com serviço de fila (RabbitMQ ou Azure Queue) para jobs de geração.
-- Webhooks de status de IA.
+- Persistir fila externa (RabbitMQ/Azure Queue) para distribuir jobs entre múltiplas instâncias.
+- Webhooks de status de IA (receber callbacks dos provedores e atualizar jobs).
+- Observabilidade distribuída (OpenTelemetry traces, métricas personalizadas).
 
 ## Padrões
 

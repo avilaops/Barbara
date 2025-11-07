@@ -1,0 +1,112 @@
+name: 🚀 Deploy Bárbara to Azure
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  build-and-deploy-backend:
+    name: 🔧 Build & Deploy API
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: api/package-lock.json
+        
+    - name: 📦 Install dependencies
+      working-directory: ./api
+      run: npm ci
+      
+    - name: 🧪 Run tests
+      working-directory: ./api
+      run: npm test
+      
+    - name: 🏗️ Build (if needed)
+      working-directory: ./api
+      run: |
+        if [ -f "package.json" ]; then
+          npm run build --if-present
+        fi
+        
+    - name: 🚀 Deploy to Azure Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'barbara-api'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: ./api
+
+  build-unity-webgl:
+    name: 🎮 Build Unity WebGL
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        lfs: true
+        
+    - name: 📦 Cache Unity Library
+      uses: actions/cache@v3
+      with:
+        path: core/Library
+        key: Library-${{ hashFiles('core/Assets/**', 'core/Packages/**', 'core/ProjectSettings/**') }}
+        restore-keys: |
+          Library-
+          
+    - name: 🎮 Build Unity Project
+      uses: game-ci/unity-builder@v4
+      env:
+        UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+        UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+      with:
+        projectPath: core
+        targetPlatform: WebGL
+        buildsPath: build
+        buildName: barbara-webgl
+        
+    - name: 📤 Upload Build Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: barbara-webgl-build
+        path: build/WebGL/barbara-webgl
+        
+    - name: 🚀 Deploy to Azure Static Web Apps
+      uses: Azure/static-web-apps-deploy@v1
+      with:
+        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        action: "upload"
+        app_location: "build/WebGL/barbara-webgl"
+        skip_app_build: true
+
+  health-check:
+    name: ✅ Health Check
+    needs: [build-and-deploy-backend]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 🏥 Check API Health
+      run: |
+        sleep 30
+        curl -f https://barbara-api.azurewebsites.net/health || exit 1
+        
+    - name: 📊 Report Status
+      run: |
+        echo "✅ API está rodando!"
+        echo "✅ Health check passou!"

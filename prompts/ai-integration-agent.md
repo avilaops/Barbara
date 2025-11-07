@@ -5,8 +5,8 @@ Objetivo: Coordenar integração entre Unity, serviços de IA (Ready Player Me, 
 ## Pipeline Ideal
 
 1. Upload imagens (frontal/lateral) para storage seguro.
-2. Criação de job de geração de avatar.
-3. Chamada API Ready Player Me ou modelo local (Diffusion fine-tuned).
+2. Criação de job de geração de avatar (persistido em Mongo + worker Node).
+3. Chamada API Ready Player Me ou modelo local (Diffusion fine-tuned) via conectores configuráveis.
 4. Pós-processamento (limpeza mesh, normal maps, otimização).
 5. Publicação do `.glb`/texturas em Blob Storage.
 6. Atualização de estado via webhook no backend.
