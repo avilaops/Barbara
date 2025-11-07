@@ -167,7 +167,7 @@ switch ($option) {
 }
 
 Write-Host ""
-Write-Host "╔════════════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║         ✅ Deploy Concluído!              ║" -ForegroundColor Green
-Write-Host "╚════════════════════════════════════════════╝" -ForegroundColor Green
+Write-Host "================================================" -ForegroundColor Green
+Write-Host "          Deploy Concluido!                   " -ForegroundColor Green
+Write-Host "================================================" -ForegroundColor Green
 Write-Host ""
