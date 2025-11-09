@@ -29,3 +29,6 @@ coverage/
 # IDE
 .vscode/
 .DS_Store
+azure-appsettings.json
+publish-profile.xml
+*.publishsettings

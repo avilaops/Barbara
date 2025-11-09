@@ -35,7 +35,7 @@ builder.Services.AddSingleton(new MongoDbContext(mongoUri, "barbara"));
 builder.Services.AddScoped<IRepository<Cliente>>(sp => 
     new MongoRepository<Cliente>(sp.GetRequiredService<IMongoDatabase>(), "clientes"));
 builder.Services.AddScoped<IRepository<Produto>>(sp => 
- new MongoRepository<Produto>(sp.GetRequiredService<IMongoDatabase>(), "produtos"));
+    new MongoRepository<Produto>(sp.GetRequiredService<IMongoDatabase>(), "produtos"));
 builder.Services.AddScoped<IRepository<Categoria>>(sp => 
     new MongoRepository<Categoria>(sp.GetRequiredService<IMongoDatabase>(), "categorias"));
 builder.Services.AddScoped<IRepository<Pedido>>(sp => 
@@ -43,15 +43,35 @@ builder.Services.AddScoped<IRepository<Pedido>>(sp =>
 builder.Services.AddScoped<IRepository<Configuracao>>(sp => 
     new MongoRepository<Configuracao>(sp.GetRequiredService<IMongoDatabase>(), "configuracoes"));
 
-// CORS
+// CORS - Configurado para produção
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
+    ?? new[] {
+        "https://barbara.azurestaticapps.net",  // Unity WebGL
+        "https://barbara.avila.inc",           // Domínio customizado
+        "https://admin.barbara.avila.inc"        // Admin (futuro)
+    };
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin()
-         .AllowAnyMethod()
-            .AllowAnyHeader()
-      .WithExposedHeaders("X-Total-Count", "X-Page", "X-Page-Size");
+    options.AddPolicy("AllowSpecificOrigins", policy =>
+ {
+        if (builder.Environment.IsDevelopment())
+        {
+  // Desenvolvimento: permite localhost
+      policy.AllowAnyOrigin()
+        .AllowAnyMethod()
+    .AllowAnyHeader()
+ .WithExposedHeaders("X-Total-Count", "X-Page", "X-Page-Size");
+      }
+        else
+        {
+   // Produção: apenas origens específicas
+    policy.WithOrigins(allowedOrigins)
+     .AllowAnyMethod()
+                .AllowAnyHeader()
+    .AllowCredentials()
+    .WithExposedHeaders("X-Total-Count", "X-Page", "X-Page-Size");
+  }
     });
 });
 
@@ -71,19 +91,20 @@ using (var scope = app.Services.CreateScope())
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
- app.UseSwagger();
+    app.UseSwagger();
     app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+app.UseCors("AllowSpecificOrigins");
 app.UseAuthorization();
 app.MapControllers();
 
 app.MapGet("/health", () => new {
     status = "healthy",
     database = "mongodb",
-    timestamp = DateTime.UtcNow
+    timestamp = DateTime.UtcNow,
+    environment = app.Environment.EnvironmentName
 })
 .WithName("HealthCheck")
 .WithOpenApi();
