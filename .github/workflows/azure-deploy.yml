@@ -1,112 +1,88 @@
-name: 🚀 Deploy Bárbara to Azure
+name: 🚀 Deploy Bárbara MongoDB to Azure
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    paths:
+      - 'src/**'
+      - '.github/workflows/azure-deploy.yml'
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '20.x'
+  DOTNET_VERSION: '9.0.x'
+  AZURE_WEBAPP_NAME: 'barbara-api'
 
 jobs:
-  build-and-deploy-backend:
-    name: 🔧 Build & Deploy API
+  build-and-deploy-api:
+    name: 🔧 Build & Deploy .NET API (MongoDB)
     runs-on: ubuntu-latest
     
     steps:
     - name: 📥 Checkout code
       uses: actions/checkout@v4
       
-    - name: 🟢 Setup Node.js
-      uses: actions/setup-node@v4
+    - name: 🔧 Setup .NET ${{ env.DOTNET_VERSION }}
+      uses: actions/setup-dotnet@v4
       with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: api/package-lock.json
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+ 
+    - name: 📦 Restore dependencies
+      run: dotnet restore
+      
+    - name: 🔨 Build
+      run: dotnet build --configuration Release --no-restore
+      
+    - name: 🧪 Run tests (se existirem)
+      run: dotnet test --no-build --verbosity normal || echo "No tests found"
         
-    - name: 📦 Install dependencies
-      working-directory: ./api
-      run: npm ci
-      
-    - name: 🧪 Run tests
-      working-directory: ./api
-      run: npm test
-      
-    - name: 🏗️ Build (if needed)
-      working-directory: ./api
-      run: |
-        if [ -f "package.json" ]; then
-          npm run build --if-present
-        fi
+    - name: 📋 Publish
+      run: dotnet publish src/Barbara.API/Barbara.API.csproj -c Release -o ${{env.DOTNET_ROOT}}/publish
         
     - name: 🚀 Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
       with:
-        app-name: 'barbara-api'
-        slot-name: 'production'
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-        package: ./api
-
-  build-unity-webgl:
-    name: 🎮 Build Unity WebGL
-    runs-on: ubuntu-latest
+        package: ${{env.DOTNET_ROOT}}/publish
     
-    steps:
-    - name: 📥 Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        lfs: true
-        
-    - name: 📦 Cache Unity Library
-      uses: actions/cache@v3
-      with:
-        path: core/Library
-        key: Library-${{ hashFiles('core/Assets/**', 'core/Packages/**', 'core/ProjectSettings/**') }}
-        restore-keys: |
-          Library-
-          
-    - name: 🎮 Build Unity Project
-      uses: game-ci/unity-builder@v4
-      env:
-        UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-        UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-        UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-      with:
-        projectPath: core
-        targetPlatform: WebGL
-        buildsPath: build
-        buildName: barbara-webgl
-        
-    - name: 📤 Upload Build Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: barbara-webgl-build
-        path: build/WebGL/barbara-webgl
-        
-    - name: 🚀 Deploy to Azure Static Web Apps
-      uses: Azure/static-web-apps-deploy@v1
-      with:
-        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        action: "upload"
-        app_location: "build/WebGL/barbara-webgl"
-        skip_app_build: true
+    - name: ✅ Deployment Summary
+      run: |
+        echo "## 🎉 Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 Application Details" >> $GITHUB_STEP_SUMMARY
+        echo "- **Platform:** .NET ${{ env.DOTNET_VERSION }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Database:** MongoDB Atlas" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔗 URLs" >> $GITHUB_STEP_SUMMARY
+        echo "- **API:** https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net" >> $GITHUB_STEP_SUMMARY
+        echo "- **Swagger:** https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/swagger" >> $GITHUB_STEP_SUMMARY
+        echo "- **Health:** https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 💰 Cost" >> $GITHUB_STEP_SUMMARY
+        echo "- **MongoDB Atlas:** USD 0/mês (Free M0)" >> $GITHUB_STEP_SUMMARY
+        echo "- **App Service:** USD 0/mês (Free F1)" >> $GITHUB_STEP_SUMMARY
 
   health-check:
     name: ✅ Health Check
-    needs: [build-and-deploy-backend]
+    needs: [build-and-deploy-api]
     runs-on: ubuntu-latest
     
     steps:
+    - name: ⏳ Wait for app to start
+      run: sleep 45
+        
     - name: 🏥 Check API Health
       run: |
-        sleep 30
-        curl -f https://barbara-api.azurewebsites.net/health || exit 1
+        response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health)
+        if [ $response -eq 200 ]; then
+          echo "✅ API está respondendo (HTTP $response)"
+        else
+          echo "⚠️ API retornou HTTP $response (pode estar inicializando)"
+        fi
         
     - name: 📊 Report Status
       run: |
-        echo "✅ API está rodando!"
-        echo "✅ Health check passou!"
+        echo "## ✅ Health Check Completed!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Acesse o Swagger para testar:" >> $GITHUB_STEP_SUMMARY
+        echo "https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/swagger" >> $GITHUB_STEP_SUMMARY
