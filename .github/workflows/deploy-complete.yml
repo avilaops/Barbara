@@ -20,7 +20,7 @@ env:
 
 jobs:
   build-deploy-api:
-    name: "🔧 Backend API (.NET9 + MongoDB)"
+    name: "🔧 Backend API (.NET 9 + MongoDB)"
     runs-on: ubuntu-latest
 
     steps:
@@ -79,7 +79,7 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth:0
+          fetch-depth: 0
           lfs: true
 
       - name: 📦 Cache Unity Library
@@ -92,6 +92,7 @@ jobs:
             Library-
 
       - name: 🎮 Build Unity Project (WebGL)
+        timeout-minutes: 30
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -109,7 +110,7 @@ jobs:
         with:
           name: barbara-webgl-build
           path: build/WebGL/barbara-webgl
-          retention-days:7
+          retention-days: 7
 
       - name: ✅ Unity Build Summary
         run: |
@@ -221,21 +222,21 @@ jobs:
         run: |
           response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net/health)
           echo "API Health Check: HTTP $response"
-          if [ "$response" -eq 200 ]; then
-            echo "✅ API está respondendo"
-          else
-            echo "⚠️ API retornou HTTP $response"
+          if [ "$response" -ne 200 ]; then
+            echo "❌ API health check failed: HTTP $response"
+            exit 1
           fi
+          echo "✅ API está respondendo corretamente"
 
       - name: 🌐 Check Static Web App
         shell: bash
         run: |
           response=$(curl -s -o /dev/null -w "%{http_code}" https://thankful-rock-090169c0f.3.azurestaticapps.net)
           echo "Static Web App Check: HTTP $response"
-          if [ "$response" -eq 200 ]; then
-            echo "✅ Static Web App está acessível"
+          if [ "$response" -ne 200 ]; then
+            echo "⚠️ Static Web App retornou HTTP $response (pode estar inicializando)"
           else
-            echo "⚠️ Static Web App retornou HTTP $response"
+            echo "✅ Static Web App está acessível"
           fi
 
       - name: 📊 Generate Final Report
@@ -252,17 +253,17 @@ jobs:
           echo "| **Health Check** | [/health](https://barbara-api.azurewebsites.net/health) | ✅ Live |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Stack Tecnológica" >> $GITHUB_STEP_SUMMARY
-          echo "- **Frontend:** Unity WebGL2022.3 LTS" >> $GITHUB_STEP_SUMMARY
-          echo "- **Backend:** ASP.NET Core9.0" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend:** Unity WebGL 2022.3 LTS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend:** ASP.NET Core 9.0" >> $GITHUB_STEP_SUMMARY
           echo "- **Database:** MongoDB Atlas (Free M0)" >> $GITHUB_STEP_SUMMARY
           echo "- **Hosting:** Azure Static Web Apps + App Service" >> $GITHUB_STEP_SUMMARY
           echo "- **Domain:** barbara.avila.inc" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 💰 Custo Estimado" >> $GITHUB_STEP_SUMMARY
-          echo "- MongoDB Atlas M0: **USD0/mês**" >> $GITHUB_STEP_SUMMARY
-          echo "- App Service Free F1: **USD0/mês**" >> $GITHUB_STEP_SUMMARY
-          echo "- Static Web Apps Free: **USD0/mês**" >> $GITHUB_STEP_SUMMARY
-          echo "- **Total: USD0/mês** 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "- MongoDB Atlas M0: **USD 0/mês**" >> $GITHUB_STEP_SUMMARY
+          echo "- App Service Free F1: **USD 0/mês**" >> $GITHUB_STEP_SUMMARY
+          echo "- Static Web Apps Free: **USD 0/mês**" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total: USD 0/mês** 🎉" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "**Build:** #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
@@ -285,6 +286,7 @@ jobs:
             echo "🌐 Acesse: https://barbara.avila.inc"
           else
             echo "❌ Deploy falhou! Verifique os logs."
+            echo "📊 Health Check Status: ${{ needs.health-check.result }}"
           fi
 
       # Opcional: Enviar para Discord/Slack/Teams
