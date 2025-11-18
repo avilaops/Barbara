@@ -1,0 +1,271 @@
+version: '3.9'
+
+services:
+  # SQL Server - Database principal
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: barbara-sqlserver
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: Y
+      SA_PASSWORD: ${SQL_PASSWORD:-YourStrong!Passw0rd}
+      MSSQL_PID: Express
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - barbara-net
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "${SQL_PASSWORD:-YourStrong!Passw0rd}", "-Q", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB - Avatar/Assets storage
+  mongodb:
+    image: mongo:7.0
+    container_name: barbara-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: barbara
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-changeme}
+      MONGO_INITDB_DATABASE: barbara_avatars
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - barbara-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis - Cache
+  redis:
+    image: redis:7-alpine
+    container_name: barbara-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis_data:/data
+    networks:
+      - barbara-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # MinIO - Storage S3
+  minio:
+    image: minio/minio:latest
+    container_name: barbara-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-minioadmin123}
+    volumes:
+      - minio_data:/data
+    networks:
+      - barbara-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.barbara-minio.rule=Host(`storage.barbara.avila.inc`)"
+      - "traefik.http.routers.barbara-minio.entrypoints=websecure"
+      - "traefik.http.routers.barbara-minio.tls.certresolver=letsencrypt"
+      - "traefik.http.services.barbara-minio.loadbalancer.server.port=9000"
+
+  # Traefik - Reverse Proxy
+  traefik:
+    image: traefik:v3.0
+    container_name: barbara-traefik
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-dev@avila.inc}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik_certs:/letsencrypt
+    networks:
+      - barbara-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.barbara.avila.inc`)"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.service=api@internal"
+
+  # Barbara API (.NET)
+  barbara-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: barbara-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=Barbara;User=sa;Password=${SQL_PASSWORD:-YourStrong!Passw0rd};TrustServerCertificate=True"
+      ConnectionStrings__MongoDB: "mongodb://barbara:${MONGO_PASSWORD:-changeme}@mongodb:27017/barbara_avatars?authSource=admin"
+      ConnectionStrings__Redis: "redis:6379,password=${REDIS_PASSWORD:-changeme}"
+      JWT_SECRET: ${JWT_SECRET}
+      SMTP_HOST: ${SMTP_HOST:-mail.avila.inc}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-noreply@avila.inc}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+    networks:
+      - barbara-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.barbara-api.rule=Host(`barbara.avila.inc`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.barbara-api.entrypoints=websecure"
+      - "traefik.http.routers.barbara-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.barbara-api.loadbalancer.server.port=80"
+
+  # Barbara Web (Blazor)
+  barbara-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: barbara-web
+    restart: unless-stopped
+    depends_on:
+      - barbara-api
+    networks:
+      - barbara-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.barbara.rule=Host(`barbara.avila.inc`)"
+      - "traefik.http.routers.barbara.entrypoints=websecure"
+      - "traefik.http.routers.barbara.tls.certresolver=letsencrypt"
+      - "traefik.http.services.barbara.loadbalancer.server.port=80"
+
+  # Auth Service (auth.avila.inc)
+  auth:
+    build:
+      context: ../1.2.2.1 - Portal/auth-service
+      dockerfile: Dockerfile
+    container_name: barbara-auth
+    restart: unless-stopped
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: 3600
+      SMTP_HOST: ${SMTP_HOST:-mail.avila.inc}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-noreply@avila.inc}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+    networks:
+      - barbara-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=Host(`auth.avila.inc`)"
+      - "traefik.http.routers.auth.entrypoints=websecure"
+      - "traefik.http.routers.auth.tls.certresolver=letsencrypt"
+      - "traefik.http.services.auth.loadbalancer.server.port=8000"
+
+  # Prometheus - Métricas
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: barbara-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    networks:
+      - barbara-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.barbara-prometheus.rule=Host(`metrics.barbara.avila.inc`)"
+      - "traefik.http.routers.barbara-prometheus.entrypoints=websecure"
+      - "traefik.http.routers.barbara-prometheus.tls.certresolver=letsencrypt"
+
+  # Grafana - Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: barbara-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_SERVER_ROOT_URL: https://grafana.barbara.avila.inc
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - barbara-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.barbara-grafana.rule=Host(`grafana.barbara.avila.inc`)"
+      - "traefik.http.routers.barbara-grafana.entrypoints=websecure"
+      - "traefik.http.routers.barbara-grafana.tls.certresolver=letsencrypt"
+
+  # Loki - Logs
+  loki:
+    image: grafana/loki:latest
+    container_name: barbara-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./monitoring/loki:/etc/loki
+      - loki_data:/loki
+    networks:
+      - barbara-net
+
+  # Promtail - Collector
+  promtail:
+    image: grafana/promtail:latest
+    container_name: barbara-promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./monitoring/promtail:/etc/promtail
+      - /var/log:/var/log:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    networks:
+      - barbara-net
+
+volumes:
+  sqlserver_data:
+  mongodb_data:
+  redis_data:
+  minio_data:
+  traefik_certs:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+
+networks:
+  barbara-net:
+    driver: bridge

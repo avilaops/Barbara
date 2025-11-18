@@ -1,0 +1,32 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'barbara-api'
+    static_configs:
+      - targets: ['barbara-api:80']
+
+  - job_name: 'barbara-web'
+    static_configs:
+      - targets: ['barbara-web:80']
+
+  - job_name: 'auth-service'
+    static_configs:
+      - targets: ['auth:8000']
+
+  - job_name: 'sqlserver'
+    static_configs:
+      - targets: ['sqlserver:1433']
+
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb:27017']
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+
+  - job_name: 'traefik'
+    static_configs:
+      - targets: ['traefik:8080']

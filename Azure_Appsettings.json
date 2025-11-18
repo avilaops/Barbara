@@ -1,0 +1,12 @@
+[
+  {
+    "name": "MONGODB_URI",
+    "value": "mongodb+srv://nicolasrosaab_db_user:Gio4EAQhbEdQMISl@cluster0.npuhras.mongodb.net/barbara?retryWrites=true&w=majority",
+    "slotSetting": false
+  },
+  {
+    "name": "ASPNETCORE_ENVIRONMENT",
+    "value": "Production",
+    "slotSetting": false
+  }
+]

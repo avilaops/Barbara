@@ -1,0 +1,36 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy solution and project files
+COPY Barbara.sln ./
+COPY src/Barbara.Domain/*.csproj ./src/Barbara.Domain/
+COPY src/Barbara.Application/*.csproj ./src/Barbara.Application/
+COPY src/Barbara.Infrastructure/*.csproj ./src/Barbara.Infrastructure/
+COPY src/Barbara.API/*.csproj ./src/Barbara.API/
+
+# Restore dependencies
+RUN dotnet restore
+
+# Copy everything else
+COPY . .
+
+# Build
+WORKDIR /src/src/Barbara.API
+RUN dotnet build -c Release -o /app/build
+
+# Publish
+FROM build AS publish
+RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
+
+# Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=publish /app/publish .
+
+EXPOSE 80
+EXPOSE 443
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost/health || exit 1
+
+ENTRYPOINT ["dotnet", "Barbara.API.dll"]

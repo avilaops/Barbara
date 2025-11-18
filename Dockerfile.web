@@ -1,0 +1,32 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy solution and project files
+COPY Barbara.sln ./
+COPY src/Barbara.Domain/*.csproj ./src/Barbara.Domain/
+COPY src/Barbara.Application/*.csproj ./src/Barbara.Application/
+COPY src/Barbara.Web/*.csproj ./src/Barbara.Web/
+
+# Restore dependencies
+RUN dotnet restore
+
+# Copy everything else
+COPY . .
+
+# Build
+WORKDIR /src/src/Barbara.Web
+RUN dotnet build -c Release -o /app/build
+
+# Publish
+FROM build AS publish
+RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
+
+# Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=publish /app/publish .
+
+EXPOSE 80
+EXPOSE 443
+
+ENTRYPOINT ["dotnet", "Barbara.Web.dll"]

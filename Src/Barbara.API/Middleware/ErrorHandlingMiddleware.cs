@@ -1,0 +1,66 @@
+using System.Net;
+using System.Text.Json;
+
+namespace Barbara.API.Middleware;
+
+public class ErrorHandlingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<ErrorHandlingMiddleware> _logger;
+
+    public ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandlingMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        try
+        {
+            await _next(context);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro não tratado: {Message}", ex.Message);
+            await HandleExceptionAsync(context, ex);
+        }
+    }
+
+    private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    {
+        var code = HttpStatusCode.InternalServerError;
+        var result = string.Empty;
+
+        switch (exception)
+        {
+            case KeyNotFoundException:
+                code = HttpStatusCode.NotFound;
+                result = JsonSerializer.Serialize(new { error = exception.Message });
+                break;
+            case InvalidOperationException:
+                code = HttpStatusCode.BadRequest;
+                result = JsonSerializer.Serialize(new { error = exception.Message });
+                break;
+            case UnauthorizedAccessException:
+                code = HttpStatusCode.Unauthorized;
+                result = JsonSerializer.Serialize(new { error = "Acesso não autorizado" });
+                break;
+            default:
+                result = JsonSerializer.Serialize(new { error = "Ocorreu um erro interno no servidor" });
+                break;
+        }
+
+        context.Response.ContentType = "application/json";
+        context.Response.StatusCode = (int)code;
+        await context.Response.WriteAsync(result);
+    }
+}
+
+public static class ErrorHandlingMiddlewareExtensions
+{
+    public static IApplicationBuilder UseErrorHandling(this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<ErrorHandlingMiddleware>();
+    }
+}

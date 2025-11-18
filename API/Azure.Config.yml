@@ -1,0 +1,33 @@
+# Azure Web App Configuration
+runtime: node
+version: 20
+
+# Startup command
+startupCommand: "npm start"
+
+# Environment variables (sensitive data in Azure Portal)
+appSettings:
+  - name: NODE_ENV
+    value: production
+  - name: PORT
+    value: 3000
+
+# Build configuration
+build:
+  - npm ci
+  - npm run build --if-present
+
+# Health check
+healthCheckPath: /health
+
+# Scaling
+scaleSettings:
+  minInstances: 1
+  maxInstances: 3
+  rules:
+    - name: http-rule
+      metricTrigger:
+        metricName: Requests
+        operator: GreaterThan
+        threshold: 1000
+        timeWindow: 5min
