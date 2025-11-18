@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!129 &1
+PlayerSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 24
+  productName: Barbara
+  companyName: Avila Inc
+  defaultCursor: {fileID: 0}
+  cursorHotspot: {x: 0, y: 0}
+  m_SplashScreenBackgroundColor: {r: 0.76078427, g: 0.6039216, b: 1, a: 1}
+  defaultScreenWidth: 1920
+  defaultScreenHeight: 1080
+  defaultScreenWidthWeb: 1920
+  defaultScreenHeightWeb: 1080
+  m_RenderingPath: 1
+  m_MobileRenderingPath: 1
+  metroPackageName: Barbara
+  metroApplicationDescription: Barbara Virtual Try-On
+  webGLTemplate: APPLICATION:Default
+  webGLMemorySize: 2048
+  webGLCompressionFormat: 1
+  webGLDataCaching: 1
